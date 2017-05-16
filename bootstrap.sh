@@ -7,7 +7,7 @@ mkdir /home/vagrant/Downloads
 cd /home/vagrant/Downloads
 
 # download prometheus installation files
-wget https://github.com/prometheus/prometheus/releases/download/0.15.1/prometheus-0.15.1.linux-amd64.tar.gz
+wget https://github.com/prometheus/prometheus/releases/download/v1.6.2/prometheus-1.6.2.linux-amd64.tar.gz
 
 # create directory for prometheus installation files
 # so that we can extrac all the files into it
@@ -15,7 +15,9 @@ mkdir -p /home/vagrant/Prometheus/server
 cd /home/vagrant/Prometheus/server
 
 # Extract files
-tar -xvzf /home/vagrant/Downloads/prometheus-0.15.1.linux-amd64.tar.gz
+tar -xvzf /home/vagrant/Downloads/prometheus-1.6.2.linux-amd64.tar.gz
+
+cd prometheus-1.6.2.linux-amd64
 
 # check prometheus version
 ./prometheus -version
@@ -25,17 +27,17 @@ mkdir -p /home/vagrant/Prometheus/node_exporter
 cd /home/vagrant/Prometheus/node_exporter
 
 # download node_exporter
-wget https://github.com/prometheus/node_exporter/releases/download/0.11.0/node_exporter-0.11.0.linux-amd64.tar.gz -O /home/vagrant/Downloads/node_exporter-0.11.0.linux-amd64.tar.gz
+wget https://github.com/prometheus/node_exporter/releases/download/v0.14.0/node_exporter-0.14.0.linux-amd64.tar.gz -O /home/vagrant/Downloads/node_exporter-0.14.0.linux-amd64.tar.gz
 
 # extract node_exporter
-tar -xvzf /home/vagrant/Downloads/node_exporter-0.11.0.linux-amd64.tar.gz
+tar -xvzf /home/vagrant/Downloads/node_exporter-0.14.0.linux-amd64.tar.gz
 
 # create a symbolic link of node_exporter
-sudo ln -s /home/vagrant/Prometheus/node_exporter/node_exporter /usr/bin
+sudo ln -s /home/vagrant/Prometheus/node_exporter/node_exporter-0.14.0.linux-amd64/node_exporter /usr/bin
 
 # edit node_exporter configuration file and add configuration so that it will automatically start in next boot
 cat <<EOF > /etc/init/node_exporter.conf
-# Run node_exporter
+# Run node_exporter-0.14.0.linux-amd64
 
 start on startup
 
@@ -47,16 +49,27 @@ EOF
 # start service of node_exporter
 sudo service node_exporter start
 
-cd /home/vagrant/Prometheus/server
+cd /home/vagrant/Prometheus/server/prometheus-1.6.2.linux-amd64/
 
 # edit prometheus configuration file which will pull metrics from node_exporter
 # every 15 seconds time interval
-cat <<EOF > /home/vagrant/Prometheus/server/prometheus.yml
+cat <<EOF > prometheus.yml
+global:
+  scrape_interval:     15s # By default, scrape targets every 15 seconds.
+
+  # Attach these labels to any time series or alerts when communicating with
+  # external systems (federation, remote storage, Alertmanager).
+  external_labels:
+    monitor: 'codelab-monitor'
+
+# A scrape configuration containing exactly one endpoint to scrape:
+# Here it's Prometheus itself.
 scrape_configs:
-  - job_name: "node"
-    scrape_interval: "15s"
-    target_groups:
-    - targets: ['localhost:9100']
+  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+  - job_name: 'node-prometheus'
+
+    static_configs:
+      - targets: ['localhost:9100']
 EOF
 
 # start prometheus
